@@ -58,8 +58,8 @@ Name this tab (leave blank to cancel):
 
 ## Docs
 
-- [Installation](docs/installation.md)
-- [Usage](docs/usage.md)
-- [Platforms](docs/platforms.md)
-- [Privacy](docs/privacy.md)
-- [Publishing](docs/publishing.md)
+- [Installation](https://github.com/d0d1/codex-tabs/blob/main/docs/installation.md)
+- [Usage](https://github.com/d0d1/codex-tabs/blob/main/docs/usage.md)
+- [Platforms](https://github.com/d0d1/codex-tabs/blob/main/docs/platforms.md)
+- [Privacy](https://github.com/d0d1/codex-tabs/blob/main/docs/privacy.md)
+- [Publishing](https://github.com/d0d1/codex-tabs/blob/main/docs/publishing.md)
