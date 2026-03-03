@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codex-tabs"
+version = "0.1.0"
+description = "Named Codex session launcher"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "d0d1", email = "d0d1.dev.projects@gmail.com" }]
+keywords = ["codex", "cli", "terminal", "sessions", "wsl", "tmux"]
+license = "GPL-3.0-only"
+license-files = ["LICENSE", "NOTICE"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: User Interfaces",
+    "Topic :: Terminals",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/d0d1/codex-tabs"
+Documentation = "https://github.com/d0d1/codex-tabs/tree/main/docs"
+Issues = "https://github.com/d0d1/codex-tabs/issues"
+Repository = "https://github.com/d0d1/codex-tabs"
+
+[project.scripts]
+codex-tabs = "codex_tabs.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]

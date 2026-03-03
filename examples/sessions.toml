@@ -1,0 +1,15 @@
+ignored_session_ids = [
+  "fedcba98-7654-3210-fedc-ba9876543210",
+]
+
+[sessions.personal]
+session_id = "01234567-89ab-cdef-0123-456789abcdef"
+cwd = "/home/example/notes"
+notes = "Personal knowledge base"
+tags = ["notes", "personal"]
+
+[sessions.work]
+session_id = "89abcdef-0123-4567-89ab-cdef01234567"
+cwd = "/home/example/code/project"
+notes = "Main work project"
+tags = ["project", "work"]
