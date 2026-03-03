@@ -3,7 +3,7 @@
 ## Recommended
 
 ```bash
-pipx install git+https://github.com/d0d1/codex-tabs.git
+pipx install codex-tabs
 ```
 
 Update an existing install:
@@ -12,7 +12,9 @@ Update an existing install:
 pipx upgrade codex-tabs
 ```
 
-If you want to force-refresh directly from the latest GitHub state:
+## Install from GitHub
+
+If you want the latest unreleased GitHub state instead of the published PyPI package:
 
 ```bash
 pipx install --force git+https://github.com/d0d1/codex-tabs.git

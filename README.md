@@ -12,7 +12,7 @@ Platform support outside Windows/WSL is implemented but not fully tested yet.
 ## Install
 
 ```bash
-pipx install git+https://github.com/d0d1/codex-tabs.git
+pipx install codex-tabs
 ```
 
 ## Start
