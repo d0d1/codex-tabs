@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 import tomllib
@@ -108,10 +109,21 @@ def escape_toml(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
+def normalize_name(name: str) -> str:
+    normalized = name.strip().lower()
+    normalized = re.sub(r"\s+", "-", normalized)
+    normalized = re.sub(r"[^a-z0-9._-]+", "-", normalized)
+    normalized = re.sub(r"^[^a-z0-9]+", "", normalized)
+    normalized = re.sub(r"[^a-z0-9]+$", "", normalized)
+    normalized = re.sub(r"-{2,}", "-", normalized)
+    return normalized
+
+
 def validate_name(name: str) -> str:
-    if not NAME_RE.fullmatch(name):
-        raise ValueError("session names must match ^[a-z0-9][a-z0-9._-]*$")
-    return name
+    normalized = normalize_name(name)
+    if not NAME_RE.fullmatch(normalized):
+        raise ValueError("Choose a name that includes at least one letter or number.")
+    return normalized
 
 
 def validate_session_id(session_id: str) -> str:

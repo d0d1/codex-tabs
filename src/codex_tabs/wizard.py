@@ -305,15 +305,17 @@ def process_selected_thread(
     print(header_text("Selected session:", stream=output), file=output)
     print_thread_details(thread, output=output)
     print("", file=output)
-    name = prompt_input(input_fn, "Name this tab (leave blank to cancel): ", output=output).strip()
-    if not name:
-        return
+    while True:
+        name = prompt_input(input_fn, "Name this tab (leave blank to cancel): ", output=output).strip()
+        if not name:
+            return
 
-    try:
-        validated_name = validate_name(name)
-    except ValueError as exc:
-        print(error_text(str(exc), stream=output), file=output)
-        return
+        try:
+            validated_name = validate_name(name)
+        except ValueError as exc:
+            print(error_text(str(exc), stream=output), file=output)
+            continue
+        break
 
     entries[validated_name] = SessionEntry(
         name=validated_name,

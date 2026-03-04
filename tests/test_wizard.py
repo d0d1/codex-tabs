@@ -18,6 +18,7 @@ from codex_tabs.cli import (
     resolve_single_saved_tab_selection,
     run_wizard,
 )
+from codex_tabs.wizard import process_selected_thread
 
 
 class WizardTests(unittest.TestCase):
@@ -224,3 +225,36 @@ class WizardTests(unittest.TestCase):
 
         self.assertIsNotNone(selected)
         self.assertEqual(selected.session_id, threads_twenty[11].session_id)
+
+    def test_process_selected_thread_retries_invalid_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config = Path(tmp) / "sessions.toml"
+            output = io.StringIO()
+            responses = iter(["!!!", "Obsidian"])
+            thread = CodexThread(
+                session_id="01234567-89ab-cdef-0123-456789abcdef",
+                title="Thread",
+                cwd="/tmp/work",
+                created_at=1,
+                updated_at=2,
+                first_user_message="first",
+                last_user_message="last",
+                last_codex_message="assistant",
+            )
+
+            with patch("codex_tabs.wizard.prompt_yes_no", return_value=False):
+                entries: dict[str, SessionEntry] = {}
+                process_selected_thread(
+                    thread,
+                    entries,
+                    config,
+                    input_fn=lambda _prompt: next(responses),
+                    output=output,
+                )
+
+            self.assertIn("obsidian", entries)
+            self.assertEqual(entries["obsidian"].session_id, thread.session_id)
+            self.assertIn(
+                "Choose a name that includes at least one letter or number.",
+                output.getvalue(),
+            )
