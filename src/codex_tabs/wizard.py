@@ -161,6 +161,18 @@ def clear_screen(*, output: TextIO) -> None:
     output.flush()
 
 
+def filter_saved_threads(
+    threads: list[CodexThread],
+    *,
+    tracked_session_ids: set[str],
+) -> list[CodexThread]:
+    if not tracked_session_ids:
+        return threads
+    return [
+        thread for thread in threads if thread.session_id not in tracked_session_ids
+    ]
+
+
 def handle_wizard_add(
     entries: dict[str, SessionEntry],
     ignored_session_ids: set[str],
@@ -169,11 +181,13 @@ def handle_wizard_add(
     input_fn: Callable[[str], str],
     output: TextIO,
 ) -> None:
+    tracked_session_ids = {entry.session_id for entry in entries.values()}
+
     print("", file=output)
-    print(header_text("Add a tab from an existing Codex session.", stream=output), file=output)
-    menu_line("1", "Use the most recent active session", output=output)
-    menu_line("2", "Show the recent session list", output=output)
-    menu_line("3", "Search recent sessions", output=output)
+    print(header_text("Add a tab from an unsaved Codex session.", stream=output), file=output)
+    menu_line("1", "Use the most recent unsaved session", output=output)
+    menu_line("2", "Show recent unsaved sessions", output=output)
+    menu_line("3", "Search unsaved sessions", output=output)
     menu_line("B", "Back", output=output)
 
     while True:
@@ -181,21 +195,26 @@ def handle_wizard_add(
         if choice in {"b", "back"}:
             return
         if choice == "1":
-            threads = load_codex_threads(limit=1)
+            threads = load_codex_threads(limit=10)
             enrich_threads_with_last_messages(threads)
             threads = filter_ignored_threads(
                 threads,
                 ignored_session_ids=ignored_session_ids,
                 include_ignored=False,
             )
+            threads = filter_saved_threads(
+                threads,
+                tracked_session_ids=tracked_session_ids,
+            )
             if not threads:
-                print(warning_text("No Codex sessions found.", stream=output), file=output)
+                print(warning_text("No unsaved Codex sessions found.", stream=output), file=output)
                 return
             process_selected_thread(threads[0], entries, config_path, input_fn=input_fn, output=output)
             return
         if choice == "2":
             selected = browse_recent_threads(
                 ignored_session_ids,
+                tracked_session_ids=tracked_session_ids,
                 input_fn=input_fn,
                 output=output,
             )
@@ -213,8 +232,12 @@ def handle_wizard_add(
                     ignored_session_ids=ignored_session_ids,
                     include_ignored=False,
                 )
+                threads = filter_saved_threads(
+                    threads,
+                    tracked_session_ids=tracked_session_ids,
+                )
                 if not threads:
-                    print(warning_text("No matching sessions found.", stream=output), file=output)
+                    print(warning_text("No matching unsaved sessions found.", stream=output), file=output)
                     continue
                 selected = choose_thread_from_list(threads, input_fn=input_fn, output=output)
                 if selected:
@@ -250,6 +273,7 @@ def choose_thread_from_list(
 
 def browse_recent_threads(
     ignored_session_ids: set[str],
+    tracked_session_ids: set[str],
     *,
     input_fn: Callable[[str], str],
     output: TextIO,
@@ -265,8 +289,12 @@ def browse_recent_threads(
             ignored_session_ids=ignored_session_ids,
             include_ignored=False,
         )
+        threads = filter_saved_threads(
+            threads,
+            tracked_session_ids=tracked_session_ids,
+        )
         if not threads:
-            print(warning_text("No Codex sessions found.", stream=output), file=output)
+            print(warning_text("No unsaved Codex sessions found.", stream=output), file=output)
             return None
 
         print("", file=output)

@@ -185,7 +185,7 @@ class WizardTests(unittest.TestCase):
 
         rendered = output.getvalue()
         self.assertFalse(handle_result)
-        self.assertIn("No matching sessions found.", rendered)
+        self.assertIn("No matching unsaved sessions found.", rendered)
 
     def test_browse_recent_threads_can_show_more(self) -> None:
         output = io.StringIO()
@@ -219,12 +219,136 @@ class WizardTests(unittest.TestCase):
         ), patch("codex_tabs.wizard.enrich_threads_with_last_messages", return_value=None):
             selected = browse_recent_threads(
                 set(),
+                set(),
                 input_fn=lambda _prompt: next(responses),
                 output=output,
             )
 
         self.assertIsNotNone(selected)
         self.assertEqual(selected.session_id, threads_twenty[11].session_id)
+
+    def test_browse_recent_threads_hides_saved_sessions(self) -> None:
+        output = io.StringIO()
+        threads = [
+            CodexThread(
+                session_id="01234567-89ab-cdef-0123-456789abcdef",
+                title="Saved",
+                cwd="/tmp/saved",
+                created_at=1,
+                updated_at=3,
+                first_user_message="saved",
+            ),
+            CodexThread(
+                session_id="89abcdef-0123-4567-89ab-cdef01234567",
+                title="Unsaved",
+                cwd="/tmp/unsaved",
+                created_at=1,
+                updated_at=2,
+                first_user_message="unsaved",
+            ),
+        ]
+
+        with patch(
+            "codex_tabs.wizard.load_codex_threads",
+            return_value=threads,
+        ), patch("codex_tabs.wizard.enrich_threads_with_last_messages", return_value=None):
+            selected = browse_recent_threads(
+                set(),
+                {"01234567-89ab-cdef-0123-456789abcdef"},
+                input_fn=lambda _prompt: "1",
+                output=output,
+            )
+
+        self.assertIsNotNone(selected)
+        self.assertEqual(selected.session_id, "89abcdef-0123-4567-89ab-cdef01234567")
+        self.assertNotIn("/tmp/saved", output.getvalue())
+
+    def test_handle_wizard_add_uses_most_recent_unsaved_session(self) -> None:
+        output = io.StringIO()
+        entries = {
+            "saved": SessionEntry(
+                name="saved",
+                session_id="01234567-89ab-cdef-0123-456789abcdef",
+            )
+        }
+        threads = [
+            CodexThread(
+                session_id="01234567-89ab-cdef-0123-456789abcdef",
+                title="Saved",
+                cwd="/tmp/saved",
+                created_at=1,
+                updated_at=3,
+                first_user_message="saved",
+            ),
+            CodexThread(
+                session_id="89abcdef-0123-4567-89ab-cdef01234567",
+                title="Unsaved",
+                cwd="/tmp/unsaved",
+                created_at=1,
+                updated_at=2,
+                first_user_message="unsaved",
+            ),
+        ]
+
+        with patch("codex_tabs.wizard.load_codex_threads", return_value=threads), patch(
+            "codex_tabs.wizard.enrich_threads_with_last_messages",
+            return_value=None,
+        ), patch("codex_tabs.wizard.process_selected_thread") as process_mock:
+            handle_wizard_add(
+                entries,
+                set(),
+                Path("/tmp/sessions.toml"),
+                input_fn=lambda _prompt: "1",
+                output=output,
+            )
+
+        process_mock.assert_called_once()
+        selected_thread = process_mock.call_args.args[0]
+        self.assertEqual(selected_thread.session_id, "89abcdef-0123-4567-89ab-cdef01234567")
+
+    def test_search_flow_hides_saved_sessions(self) -> None:
+        output = io.StringIO()
+        entries = {
+            "saved": SessionEntry(
+                name="saved",
+                session_id="01234567-89ab-cdef-0123-456789abcdef",
+            )
+        }
+        threads = [
+            CodexThread(
+                session_id="01234567-89ab-cdef-0123-456789abcdef",
+                title="Saved",
+                cwd="/tmp/saved",
+                created_at=1,
+                updated_at=3,
+                first_user_message="saved",
+            ),
+            CodexThread(
+                session_id="89abcdef-0123-4567-89ab-cdef01234567",
+                title="Unsaved",
+                cwd="/tmp/unsaved",
+                created_at=1,
+                updated_at=2,
+                first_user_message="unsaved",
+            ),
+        ]
+
+        responses = iter(["3", "oauth", "1"])
+        with patch("codex_tabs.wizard.search_codex_threads", return_value=threads), patch(
+            "codex_tabs.wizard.process_selected_thread"
+        ) as process_mock:
+            handle_wizard_add(
+                entries,
+                set(),
+                Path("/tmp/sessions.toml"),
+                input_fn=lambda _prompt: next(responses),
+                output=output,
+            )
+
+        process_mock.assert_called_once()
+        selected_thread = process_mock.call_args.args[0]
+        self.assertEqual(selected_thread.session_id, "89abcdef-0123-4567-89ab-cdef01234567")
+        self.assertNotIn("/tmp/saved", output.getvalue())
 
     def test_process_selected_thread_retries_invalid_name(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
