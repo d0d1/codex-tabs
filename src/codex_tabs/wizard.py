@@ -353,7 +353,11 @@ def process_selected_thread(
         else:
             print(success_text(f"Ignored {ignored_count} previous untracked sessions.", stream=output), file=output)
 
-    open_now = prompt_yes_no("Open it now? [Y/n]: ", input_fn=input_fn, default=True)
+    open_now = prompt_yes_no(
+        "Open the newly saved tab now? [Y/n]: ",
+        input_fn=input_fn,
+        default=True,
+    )
     if open_now:
         code = open_named_sessions(
             load_registry(config_path),
