@@ -333,6 +333,13 @@ def process_selected_thread(
         default=False,
     )
     if ignore_rest:
+        print(
+            label_text(
+                "Ignoring other untracked previous sessions. This can take a moment...",
+                stream=output,
+            ),
+            file=output,
+        )
         ignored_count = ignore_other_untracked_previous_sessions(
             entries,
             ignored_session_ids,
