@@ -90,6 +90,15 @@ def run_wizard(
         if action == "remove":
             handle_wizard_remove(entries, config_path, input_fn=input_fn, output=output)
             continue
+        if action == "ignore-other":
+            handle_wizard_ignore_other(
+                entries,
+                ignored_session_ids,
+                config_path,
+                input_fn=input_fn,
+                output=output,
+            )
+            continue
 
 
 def prompt_main_action(
@@ -122,6 +131,7 @@ def prompt_main_action(
         menu_line("C", "Clear the screen", output=output)
         menu_line("R", "Rename a saved tab alias", output=output)
         menu_line("D", "Delete a saved tab alias", output=output)
+        menu_line("I", "Ignore other untracked previous sessions", output=output)
         menu_line("Q", "Quit", output=output)
         while True:
             choice = prompt_input(input_fn, "> ", output=output).strip().lower()
@@ -139,6 +149,8 @@ def prompt_main_action(
                 return "rename"
             if choice in {"d", "delete", "remove"}:
                 return "remove"
+            if choice in {"i", "ignore", "ignore-other"}:
+                return "ignore-other"
             if choice in {"q", "quit"}:
                 return "quit"
 
@@ -356,32 +368,6 @@ def process_selected_thread(
     write_registry(config_path, entries, ignored_session_ids)
     print(success_text(f"Saved tab: {validated_name}", stream=output), file=output)
 
-    ignore_rest = prompt_yes_no(
-        "Ignore all other untracked previous sessions? [y/N]: ",
-        input_fn=input_fn,
-        default=False,
-    )
-    if ignore_rest:
-        print(
-            label_text(
-                "Ignoring other untracked previous sessions. This can take a moment...",
-                stream=output,
-            ),
-            file=output,
-        )
-        ignored_count = ignore_other_untracked_previous_sessions(
-            entries,
-            ignored_session_ids,
-            current_session_id=thread.session_id,
-            config_path=config_path,
-        )
-        if ignored_count == 0:
-            print(warning_text("No other untracked previous sessions to ignore.", stream=output), file=output)
-        elif ignored_count == 1:
-            print(success_text("Ignored 1 previous untracked session.", stream=output), file=output)
-        else:
-            print(success_text(f"Ignored {ignored_count} previous untracked sessions.", stream=output), file=output)
-
     open_now = prompt_yes_no(
         "Open the newly saved tab now? [Y/n]: ",
         input_fn=input_fn,
@@ -409,6 +395,48 @@ def process_selected_thread(
             label_text(f"You can open it later with: codex-tabs open {validated_name}", stream=output),
             file=output,
         )
+
+
+def handle_wizard_ignore_other(
+    entries: dict[str, SessionEntry],
+    ignored_session_ids: set[str],
+    config_path: Path,
+    *,
+    input_fn: Callable[[str], str],
+    output: TextIO,
+) -> None:
+    if not entries:
+        print(warning_text("No saved tabs yet.", stream=output), file=output)
+        return
+
+    confirmed = prompt_yes_no(
+        "Ignore all other untracked previous sessions? [y/N]: ",
+        input_fn=input_fn,
+        default=False,
+    )
+    if not confirmed:
+        print(warning_text("Canceled.", stream=output), file=output)
+        return
+
+    print(
+        label_text(
+            "Ignoring other untracked previous sessions. This can take a moment...",
+            stream=output,
+        ),
+        file=output,
+    )
+    ignored_count = ignore_other_untracked_previous_sessions(
+        entries,
+        ignored_session_ids,
+        current_session_id=None,
+        config_path=config_path,
+    )
+    if ignored_count == 0:
+        print(warning_text("No other untracked previous sessions to ignore.", stream=output), file=output)
+    elif ignored_count == 1:
+        print(success_text("Ignored 1 previous untracked session.", stream=output), file=output)
+    else:
+        print(success_text(f"Ignored {ignored_count} previous untracked sessions.", stream=output), file=output)
 
 
 def handle_wizard_open(

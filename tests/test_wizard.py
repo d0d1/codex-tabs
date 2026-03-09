@@ -18,7 +18,7 @@ from codex_tabs.cli import (
     resolve_single_saved_tab_selection,
     run_wizard,
 )
-from codex_tabs.wizard import process_selected_thread
+from codex_tabs.wizard import handle_wizard_ignore_other, process_selected_thread
 
 
 class WizardTests(unittest.TestCase):
@@ -40,6 +40,7 @@ class WizardTests(unittest.TestCase):
         self.assertIn("[W] Open all saved tabs", rendered)
         self.assertIn("Rename a saved tab alias", rendered)
         self.assertIn("Delete a saved tab alias", rendered)
+        self.assertIn("Ignore other untracked previous sessions", rendered)
 
     def test_run_wizard_quit_when_no_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -135,6 +136,40 @@ class WizardTests(unittest.TestCase):
             )
             registry = load_registry_data(config)
             self.assertEqual(registry.ignored_session_ids, ignored_session_ids)
+
+    def test_handle_wizard_ignore_other_runs_from_main_menu_action(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config = Path(tmp) / "sessions.toml"
+            output = io.StringIO()
+            entries = {
+                "personal": SessionEntry(
+                    name="personal",
+                    session_id="01234567-89ab-cdef-0123-456789abcdef",
+                )
+            }
+            ignored_session_ids = set()
+
+            with patch("codex_tabs.wizard.prompt_yes_no", return_value=True), patch(
+                "codex_tabs.wizard.ignore_other_untracked_previous_sessions",
+                return_value=2,
+            ) as ignore_mock:
+                handle_wizard_ignore_other(
+                    entries,
+                    ignored_session_ids,
+                    config,
+                    input_fn=lambda _prompt: "y",
+                    output=output,
+                )
+
+            ignore_mock.assert_called_once_with(
+                entries,
+                ignored_session_ids,
+                current_session_id=None,
+                config_path=config,
+            )
+            rendered = output.getvalue()
+            self.assertIn("This can take a moment", rendered)
+            self.assertIn("Ignored 2 previous untracked sessions.", rendered)
 
     def test_parse_saved_tab_selection_accepts_indices_and_names(self) -> None:
         entries = {
@@ -373,8 +408,8 @@ class WizardTests(unittest.TestCase):
                     entries,
                     config,
                     input_fn=lambda _prompt: next(responses),
-                    output=output,
-                )
+                output=output,
+            )
 
             self.assertIn("obsidian", entries)
             self.assertEqual(entries["obsidian"].session_id, thread.session_id)
@@ -382,3 +417,39 @@ class WizardTests(unittest.TestCase):
                 "Choose a name that includes at least one letter or number.",
                 output.getvalue(),
             )
+
+    def test_process_selected_thread_no_longer_prompts_bulk_ignore(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config = Path(tmp) / "sessions.toml"
+            output = io.StringIO()
+            thread = CodexThread(
+                session_id="01234567-89ab-cdef-0123-456789abcdef",
+                title="Thread",
+                cwd="/tmp/work",
+                created_at=1,
+                updated_at=2,
+                first_user_message="first",
+                last_user_message="last",
+                last_codex_message="assistant",
+            )
+
+            prompt_results = [False]
+
+            def fake_prompt_yes_no(*_args, **_kwargs):
+                return prompt_results.pop(0)
+
+            entries: dict[str, SessionEntry] = {}
+            with patch("codex_tabs.wizard.prompt_yes_no", side_effect=fake_prompt_yes_no), patch(
+                "codex_tabs.wizard.ignore_other_untracked_previous_sessions"
+            ) as ignore_mock:
+                process_selected_thread(
+                    thread,
+                    entries,
+                    config,
+                    input_fn=lambda _prompt: "Obsidian",
+                    output=output,
+                )
+
+            self.assertFalse(prompt_results)
+            ignore_mock.assert_not_called()
+            self.assertIn("obsidian", entries)
