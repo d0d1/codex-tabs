@@ -60,6 +60,7 @@ Name this tab (leave blank to cancel):
 ## Docs
 
 - [Installation](https://github.com/d0d1/codex-tabs/blob/main/docs/installation.md)
+- [Use cases](https://github.com/d0d1/codex-tabs/blob/main/docs/use-cases.md)
 - [Usage](https://github.com/d0d1/codex-tabs/blob/main/docs/usage.md)
 - [Platforms](https://github.com/d0d1/codex-tabs/blob/main/docs/platforms.md)
 - [Privacy](https://github.com/d0d1/codex-tabs/blob/main/docs/privacy.md)
