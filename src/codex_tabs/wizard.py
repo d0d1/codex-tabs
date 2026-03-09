@@ -223,6 +223,7 @@ def handle_wizard_add(
             return
         if choice == "3":
             while True:
+                print("", file=output)
                 query = prompt_input(input_fn, "Search text (blank to go back): ", output=output).strip()
                 if not query:
                     return
@@ -490,6 +491,7 @@ def handle_wizard_rename(
     print(header_text("Saved tab aliases:", stream=output), file=output)
     print(label_text("This only changes codex-tabs. Codex itself is not modified.", stream=output), file=output)
     print_numbered_saved_tabs(entries, output=output)
+    print("", file=output)
     raw = prompt_input(input_fn, "Select a tab to rename (blank to cancel): ", output=output).strip()
     if not raw:
         print(warning_text("Canceled.", stream=output), file=output)
@@ -524,6 +526,7 @@ def handle_wizard_remove(
     print(header_text("Saved tab aliases:", stream=output), file=output)
     print(label_text("This only changes codex-tabs. Codex itself is not modified.", stream=output), file=output)
     print_numbered_saved_tabs(entries, output=output)
+    print("", file=output)
     raw = prompt_input(input_fn, "Select a tab to delete (blank to cancel): ", output=output).strip()
     if not raw:
         print(warning_text("Canceled.", stream=output), file=output)
