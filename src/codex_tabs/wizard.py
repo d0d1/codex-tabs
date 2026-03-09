@@ -422,6 +422,7 @@ def handle_wizard_open(
     print("", file=output)
     print(header_text("Saved tabs:", stream=output), file=output)
     print_numbered_saved_tabs(entries, output=output)
+    print("", file=output)
     raw = prompt_input(
         input_fn,
         "Enter one or more numbers or names separated by spaces (blank to cancel): ",
