@@ -36,12 +36,13 @@ What would you like to do?
 [C] Clear the screen
 [R] Rename a saved tab alias
 [D] Delete a saved tab alias
+[I] Ignore other untracked previous sessions
 [Q] Quit
 
-Add a tab from an existing Codex session.
-[1] Use the most recent active session
-[2] Show the recent session list
-[3] Search recent sessions
+Add a tab from an unsaved Codex session.
+[1] Use the most recent unsaved session
+[2] Show recent unsaved sessions
+[3] Search unsaved sessions
 [B] Back
 
 [1]

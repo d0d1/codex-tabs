@@ -15,7 +15,7 @@ The wizard is the main entrypoint. It can:
 - save named aliases
 - open one or many saved aliases
 - rename or delete saved aliases
-- ignore sessions from future discovery
+- ignore other untracked previous sessions from future discovery
 
 ## CLI
 
