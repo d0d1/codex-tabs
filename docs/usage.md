@@ -16,6 +16,7 @@ The wizard is the main entrypoint. It can:
 - open one or many saved aliases
 - rename or delete saved aliases
 - ignore other untracked previous sessions from future discovery
+- offer elevated Windows Terminal setup automatically when launched from an elevated Windows/WSL session
 
 ## CLI
 
@@ -34,6 +35,7 @@ codex-tabs import --index 1 --name personal
 codex-tabs ignore --all-untracked
 codex-tabs ignored
 codex-tabs unignore --all
+codex-tabs setup-wt-admin
 ```
 
 ## Registry format
@@ -41,6 +43,8 @@ codex-tabs unignore --all
 Example:
 
 ```toml
+wt_profile = "Codex Tabs (Admin)"
+
 ignored_session_ids = [
   "fedcba98-7654-3210-fedc-ba9876543210",
 ]

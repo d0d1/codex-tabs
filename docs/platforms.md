@@ -11,9 +11,26 @@ Expected environment:
 - Codex running inside WSL
 - Windows Terminal available as `wt.exe`
 
-Optional configuration:
+Default behavior:
 
-- `CODEX_TABS_WT_PROFILE`
+- `codex-tabs` opens Windows Terminal tabs
+- if you are in an elevated Windows Terminal WSL session, `codex-tabs` can offer elevated-launch setup automatically
+
+Elevated/admin setup:
+
+```bash
+codex-tabs setup-wt-admin
+```
+
+This creates an elevated Windows Terminal profile and saves it in the `codex-tabs` registry as `wt_profile`.
+
+For elevated/admin workflows on Windows Terminal:
+
+- `codex-tabs` can target an elevated profile once it is configured
+- Windows Terminal may still open a separate elevated window instead of adding a tab to the current window
+- the important outcome is that the launched Codex session can run elevated
+
+Advanced override:
 
 If `CODEX_TABS_WT_PROFILE` is set, `codex-tabs` opens Windows Terminal tabs with that profile:
 
@@ -21,13 +38,7 @@ If `CODEX_TABS_WT_PROFILE` is set, `codex-tabs` opens Windows Terminal tabs with
 export CODEX_TABS_WT_PROFILE="Ubuntu (Admin)"
 ```
 
-This is useful when you want `codex-tabs` to target a specific Windows Terminal profile, including a profile configured with `elevate: true`.
-
-For elevated/admin workflows on Windows Terminal:
-
-- `codex-tabs` can target an elevated profile if you configure one
-- Windows Terminal may still open a separate elevated window instead of adding a tab to the current window
-- the important outcome is that the launched Codex session can run elevated
+This overrides the profile saved in the `codex-tabs` registry and is mainly useful for advanced setups.
 
 ## Linux / macOS
 

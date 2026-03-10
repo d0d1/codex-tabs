@@ -25,6 +25,18 @@ Examples:
 - Windows/WSL: Windows Terminal tabs
 - Linux/macOS: `tmux` windows
 
+## How do I open Codex sessions elevated on Windows/WSL?
+
+Run:
+
+```bash
+codex-tabs setup-wt-admin
+```
+
+Or, if you start `codex-tabs` from an elevated Windows Terminal WSL session, accept the automatic setup prompt.
+
+After that, `codex-tabs` can target an elevated Windows Terminal profile for launched sessions.
+
 ## How do I find an existing Codex session without remembering its ID?
 
 Use the wizard:
