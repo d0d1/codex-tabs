@@ -47,7 +47,10 @@ class WizardTests(unittest.TestCase):
             config = Path(tmp) / "sessions.toml"
             output = io.StringIO()
 
-            with patch("codex_tabs.wizard.get_config_path", return_value=config):
+            with patch("codex_tabs.wizard.get_config_path", return_value=config), patch(
+                "codex_tabs.wizard.detect_windows_admin_context",
+                return_value=False,
+            ):
                 code = run_wizard(
                     input_fn=lambda _prompt: "q",
                     output=output,
@@ -68,7 +71,10 @@ class WizardTests(unittest.TestCase):
             output = io.StringIO()
             responses = iter(["c", "q"])
 
-            with patch("codex_tabs.wizard.get_config_path", return_value=config):
+            with patch("codex_tabs.wizard.get_config_path", return_value=config), patch(
+                "codex_tabs.wizard.detect_windows_admin_context",
+                return_value=False,
+            ):
                 code = run_wizard(
                     input_fn=lambda _prompt: next(responses),
                     output=output,
@@ -78,6 +84,32 @@ class WizardTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertIn("\033[2J\033[H", rendered)
             self.assertGreaterEqual(rendered.count("Welcome to codex-tabs."), 2)
+
+    def test_run_wizard_prompts_for_admin_setup_when_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config = Path(tmp) / "sessions.toml"
+            output = io.StringIO()
+            responses = iter(["", "q"])
+
+            with patch("codex_tabs.wizard.get_config_path", return_value=config), patch(
+                "codex_tabs.wizard.detect_windows_admin_context",
+                return_value=True,
+            ), patch(
+                "codex_tabs.wizard.has_valid_wt_profile_setup",
+                return_value=False,
+            ), patch(
+                "codex_tabs.wizard.setup_wt_admin",
+                return_value=("Codex Tabs (Admin)", True, Path("/tmp/settings.json")),
+            ):
+                code = run_wizard(
+                    input_fn=lambda _prompt: next(responses),
+                    output=output,
+                )
+
+            rendered = output.getvalue()
+            self.assertEqual(code, 0)
+            self.assertIn("Admin mode detected.", rendered)
+            self.assertIn("Configured elevated Windows Terminal profile", rendered)
 
     def test_ignore_other_untracked_previous_sessions(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

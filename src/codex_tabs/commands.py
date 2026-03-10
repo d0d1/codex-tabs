@@ -120,7 +120,14 @@ def cmd_rename(
 
 
 def cmd_open(entries: dict[str, SessionEntry], args: argparse.Namespace) -> int:
-    return open_named_sessions(entries, args.names, window=args.window, dry_run=args.dry_run)
+    wt_profile = getattr(args, "wt_profile", None)
+    return open_named_sessions(
+        entries,
+        args.names,
+        wt_profile=wt_profile,
+        window=args.window,
+        dry_run=args.dry_run,
+    )
 
 
 def cmd_ignored(

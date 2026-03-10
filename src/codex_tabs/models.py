@@ -38,3 +38,4 @@ class CodexThread:
 class RegistryData:
     sessions: dict[str, SessionEntry]
     ignored_session_ids: set[str]
+    wt_profile: str | None = None

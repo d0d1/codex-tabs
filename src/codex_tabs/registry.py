@@ -24,7 +24,7 @@ def get_config_path() -> Path:
 
 def load_registry_data(path: Path) -> RegistryData:
     if not path.exists():
-        return RegistryData(sessions={}, ignored_session_ids=set())
+        return RegistryData(sessions={}, ignored_session_ids=set(), wt_profile=None)
 
     with path.open("rb") as f:
         data = tomllib.load(f)
@@ -55,7 +55,16 @@ def load_registry_data(path: Path) -> RegistryData:
         for session_id in ignored
         if isinstance(session_id, str) and session_id.strip()
     }
-    return RegistryData(sessions=entries, ignored_session_ids=ignored_session_ids)
+    wt_profile = data.get("wt_profile")
+    if not isinstance(wt_profile, str) or not wt_profile.strip():
+        wt_profile = None
+    else:
+        wt_profile = wt_profile.strip()
+    return RegistryData(
+        sessions=entries,
+        ignored_session_ids=ignored_session_ids,
+        wt_profile=wt_profile,
+    )
 
 
 def load_registry(path: Path) -> dict[str, SessionEntry]:
@@ -70,16 +79,23 @@ def write_registry(
     path: Path,
     entries: dict[str, SessionEntry],
     ignored_session_ids: set[str] | None = None,
+    wt_profile: str | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    existing = load_registry_data(path) if path.exists() else RegistryData({}, set(), None)
     if ignored_session_ids is None:
-        ignored_session_ids = load_ignored_session_ids(path)
+        ignored_session_ids = existing.ignored_session_ids
+    if wt_profile is None:
+        wt_profile = existing.wt_profile
 
     lines: list[str] = [
         "# codex-tabs session registry",
         "# Generated and updated by codex-tabs.",
         "",
     ]
+    if wt_profile:
+        lines.append(f'wt_profile = "{escape_toml(wt_profile)}"')
+        lines.append("")
     if ignored_session_ids:
         rendered_ids = ", ".join(
             f'"{escape_toml(session_id)}"'

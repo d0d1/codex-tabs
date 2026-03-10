@@ -57,6 +57,7 @@ from codex_tabs.wizard import (
     resolve_single_saved_tab_selection,
     run_wizard,
 )
+from codex_tabs.wt_admin import setup_wt_admin
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -223,6 +224,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Create an example config if one does not exist",
     )
 
+    subparsers.add_parser(
+        "setup-wt-admin",
+        help="Create an elevated Windows Terminal profile and save it in codex-tabs config",
+    )
+
     return parser
 
 
@@ -247,6 +253,16 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "init":
             return cmd_init(config_path, args)
 
+        if args.command == "setup-wt-admin":
+            profile_name, changed, settings_path = setup_wt_admin(config_path)
+            if changed:
+                print(f"Configured Windows Terminal profile: {profile_name}")
+            else:
+                print(f"Windows Terminal profile already configured: {profile_name}")
+            print(f"settings.json: {settings_path}")
+            print(f"codex-tabs config: {config_path}")
+            return 0
+
         registry = load_registry_data(config_path)
         entries = registry.sessions
         ignored_session_ids = registry.ignored_session_ids
@@ -270,6 +286,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "import":
             return cmd_import(entries, ignored_session_ids, config_path, args)
         if args.command == "open":
+            args.wt_profile = registry.wt_profile
             return cmd_open(entries, args)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)

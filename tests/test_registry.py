@@ -60,6 +60,21 @@ class RegistryTests(unittest.TestCase):
             self.assertEqual(registry.ignored_session_ids, ignored)
             self.assertEqual(load_ignored_session_ids(path), ignored)
 
+    def test_write_and_load_registry_preserves_wt_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "sessions.toml"
+            entries = {
+                "personal": SessionEntry(
+                    name="personal",
+                    session_id="01234567-89ab-cdef-0123-456789abcdef",
+                )
+            }
+
+            write_registry(path, entries, wt_profile="Codex Tabs (Admin)")
+            registry = load_registry_data(path)
+
+            self.assertEqual(registry.wt_profile, "Codex Tabs (Admin)")
+
     def test_create_example_entries_is_generic(self) -> None:
         entries = create_example_entries()
         self.assertEqual(set(entries), {"personal", "work"})

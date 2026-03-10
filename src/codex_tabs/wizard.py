@@ -39,6 +39,11 @@ from codex_tabs.style import (
     warning_text,
     error_text,
 )
+from codex_tabs.wt_admin import (
+    detect_windows_admin_context,
+    has_valid_wt_profile_setup,
+    setup_wt_admin,
+)
 
 
 def run_wizard(
@@ -49,11 +54,13 @@ def run_wizard(
     config_path = get_config_path()
 
     print_wizard_header(config_path, output=output)
+    maybe_prompt_wt_admin_setup(config_path, input_fn=input_fn, output=output)
 
     while True:
         registry = load_registry_data(config_path)
         entries = registry.sessions
         ignored_session_ids = registry.ignored_session_ids
+        wt_profile = registry.wt_profile
         action = prompt_main_action(entries, input_fn=input_fn, output=output)
         if action == "quit":
             print(success_text("Graceful shutdown complete", stream=output), file=output)
@@ -79,10 +86,20 @@ def run_wizard(
             )
             continue
         if action == "open":
-            handle_wizard_open(entries, input_fn=input_fn, output=output)
+            handle_wizard_open(
+                entries,
+                wt_profile=wt_profile,
+                input_fn=input_fn,
+                output=output,
+            )
             continue
         if action == "open-all":
-            handle_wizard_open_all(entries, input_fn=input_fn, output=output)
+            handle_wizard_open_all(
+                entries,
+                wt_profile=wt_profile,
+                input_fn=input_fn,
+                output=output,
+            )
             continue
         if action == "rename":
             handle_wizard_rename(entries, config_path, input_fn=input_fn, output=output)
@@ -166,6 +183,59 @@ def print_wizard_header(config_path: Path, *, output: TextIO) -> None:
         ),
         file=output,
     )
+
+
+def maybe_prompt_wt_admin_setup(
+    config_path: Path,
+    *,
+    input_fn: Callable[[str], str],
+    output: TextIO,
+) -> None:
+    registry = load_registry_data(config_path)
+    if not detect_windows_admin_context():
+        return
+    if has_valid_wt_profile_setup(registry.wt_profile):
+        return
+
+    print("", file=output)
+    print(
+        warning_text(
+            "Admin mode detected. codex-tabs can set up elevated Windows Terminal launching for this machine.",
+            stream=output,
+        ),
+        file=output,
+    )
+    confirmed = prompt_yes_no(
+        "Set up elevated Windows Terminal support now? [Y/n]: ",
+        input_fn=input_fn,
+        default=True,
+    )
+    if not confirmed:
+        return
+
+    try:
+        profile_name, changed, settings_path = setup_wt_admin(config_path)
+    except ValueError as exc:
+        print(error_text(str(exc), stream=output), file=output)
+        return
+
+    if changed:
+        print(
+            success_text(
+                f"Configured elevated Windows Terminal profile: {profile_name}",
+                stream=output,
+            ),
+            file=output,
+        )
+    else:
+        print(
+            success_text(
+                f"Elevated Windows Terminal profile already configured: {profile_name}",
+                stream=output,
+            ),
+            file=output,
+        )
+    print(f"{label_text('settings.json:', stream=output)} {settings_path}", file=output)
 
 
 def clear_screen(*, output: TextIO) -> None:
@@ -365,6 +435,7 @@ def process_selected_thread(
     )
     registry = load_registry_data(config_path)
     ignored_session_ids = registry.ignored_session_ids
+    wt_profile = registry.wt_profile
     write_registry(config_path, entries, ignored_session_ids)
     print(success_text(f"Saved tab: {validated_name}", stream=output), file=output)
 
@@ -377,6 +448,7 @@ def process_selected_thread(
         code = open_named_sessions(
             load_registry(config_path),
             [validated_name],
+            wt_profile=wt_profile,
             window="last",
             dry_run=False,
         )
@@ -442,6 +514,7 @@ def handle_wizard_ignore_other(
 def handle_wizard_open(
     entries: dict[str, SessionEntry],
     *,
+    wt_profile: str | None,
     input_fn: Callable[[str], str],
     output: TextIO,
 ) -> None:
@@ -466,7 +539,13 @@ def handle_wizard_open(
         print(error_text(str(exc), stream=output), file=output)
         return
     try:
-        code = open_named_sessions(entries, names, window="last", dry_run=False)
+        code = open_named_sessions(
+            entries,
+            names,
+            wt_profile=wt_profile,
+            window="last",
+            dry_run=False,
+        )
     except ValueError as exc:
         print(error_text(str(exc), stream=output), file=output)
         return
@@ -479,6 +558,7 @@ def handle_wizard_open(
 def handle_wizard_open_all(
     entries: dict[str, SessionEntry],
     *,
+    wt_profile: str | None,
     input_fn: Callable[[str], str],
     output: TextIO,
 ) -> None:
@@ -497,7 +577,13 @@ def handle_wizard_open_all(
             print(warning_text("Canceled.", stream=output), file=output)
             return
 
-    code = open_named_sessions(entries, names, window="last", dry_run=False)
+    code = open_named_sessions(
+        entries,
+        names,
+        wt_profile=wt_profile,
+        window="last",
+        dry_run=False,
+    )
     if code == 0:
         print("", file=output)
         print(success_text("Opened all saved tabs.", stream=output), file=output)

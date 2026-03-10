@@ -16,6 +16,7 @@ def open_named_sessions(
     entries: dict[str, SessionEntry],
     names: list[str],
     *,
+    wt_profile: str | None = None,
     window: str,
     dry_run: bool,
 ) -> int:
@@ -32,7 +33,7 @@ def open_named_sessions(
             selected,
             codex_bin=codex_bin,
             distro=os.environ.get("WSL_DISTRO_NAME", "Ubuntu"),
-            profile=os.environ.get("CODEX_TABS_WT_PROFILE"),
+            profile=wt_profile or os.environ.get("CODEX_TABS_WT_PROFILE"),
             window=window,
             fallback_cwd=os.getcwd(),
         )
