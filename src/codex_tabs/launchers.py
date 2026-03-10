@@ -32,6 +32,7 @@ def open_named_sessions(
             selected,
             codex_bin=codex_bin,
             distro=os.environ.get("WSL_DISTRO_NAME", "Ubuntu"),
+            profile=os.environ.get("CODEX_TABS_WT_PROFILE"),
             window=window,
             fallback_cwd=os.getcwd(),
         )
@@ -173,6 +174,7 @@ def build_wt_command(
     *,
     codex_bin: str,
     distro: str,
+    profile: str | None,
     window: str,
     fallback_cwd: str,
 ) -> list[str]:
@@ -194,6 +196,17 @@ def build_wt_command(
                 "new-tab",
                 "--title",
                 entry.name,
+            ]
+        )
+        if profile:
+            wt_parts.extend(
+                [
+                    "-p",
+                    profile,
+                ]
+            )
+        wt_parts.extend(
+            [
                 "wsl.exe",
                 "-d",
                 distro,

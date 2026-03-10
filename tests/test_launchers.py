@@ -25,6 +25,7 @@ class LauncherTests(unittest.TestCase):
             entries,
             codex_bin="/usr/bin/codex",
             distro="Ubuntu",
+            profile=None,
             window="last",
             fallback_cwd="/tmp",
         )
@@ -50,12 +51,33 @@ class LauncherTests(unittest.TestCase):
             entries,
             codex_bin="/usr/bin/codex",
             distro="Ubuntu",
+            profile=None,
             window="new",
             fallback_cwd="/tmp",
         )
 
         self.assertEqual(cmd[0], "wt.exe")
         self.assertNotIn("-w", cmd)
+
+    def test_build_wt_command_with_profile(self) -> None:
+        entries = [
+            SessionEntry(
+                name="personal",
+                session_id="01234567-89ab-cdef-0123-456789abcdef",
+            )
+        ]
+
+        cmd = build_wt_command(
+            entries,
+            codex_bin="/usr/bin/codex",
+            distro="Ubuntu",
+            profile="Ubuntu (Admin)",
+            window="last",
+            fallback_cwd="/tmp",
+        )
+
+        self.assertIn("-p", cmd)
+        self.assertIn("Ubuntu (Admin)", cmd)
 
     def test_build_tmux_commands_for_new_session(self) -> None:
         entries = [
