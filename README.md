@@ -9,6 +9,8 @@ It keeps a registry of aliases for `codex resume <SESSION_ID>` and opens them wi
 
 Platform support outside Windows/WSL is implemented but not fully tested yet.
 
+Feature suggestions, bug reports, and platform-specific improvements are welcome in GitHub Issues or Discussions.
+
 ## Install
 
 ```bash
