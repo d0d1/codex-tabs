@@ -141,8 +141,8 @@ def prompt_main_action(
     else:
         print("", file=output)
         print(header_text("What would you like to do?", stream=output), file=output)
-        menu_line("W", "Open all saved tabs", output=output)
         menu_line("O", "Open a tab", output=output)
+        menu_line("W", "Open all saved tabs", output=output)
         menu_line("A", "Add a tab", output=output)
         menu_line("L", "List tabs", output=output)
         menu_line("C", "Clear the screen", output=output)
