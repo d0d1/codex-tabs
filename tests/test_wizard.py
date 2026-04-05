@@ -373,6 +373,44 @@ class WizardTests(unittest.TestCase):
         selected_thread = process_mock.call_args.args[0]
         self.assertEqual(selected_thread.session_id, "89abcdef-0123-4567-89ab-cdef01234567")
 
+    def test_browse_recent_threads_uses_same_recent_window_as_most_recent_option(self) -> None:
+        output = io.StringIO()
+        threads = [
+            CodexThread(
+                session_id=f"00000000-0000-0000-0000-{i:012d}",
+                title=f"Saved {i}",
+                cwd=f"/tmp/saved-{i}",
+                created_at=1,
+                updated_at=10 - i,
+                first_user_message="saved",
+            )
+            for i in range(3)
+        ] + [
+            CodexThread(
+                session_id="89abcdef-0123-4567-89ab-cdef01234567",
+                title="Unsaved",
+                cwd="/tmp/unsaved",
+                created_at=1,
+                updated_at=7,
+                first_user_message="unsaved",
+            )
+        ]
+
+        tracked = {thread.session_id for thread in threads[:3]}
+        with patch(
+            "codex_tabs.wizard.load_codex_threads",
+            return_value=threads,
+        ), patch("codex_tabs.wizard.enrich_threads_with_last_messages", return_value=None):
+            selected = browse_recent_threads(
+                set(),
+                tracked,
+                input_fn=lambda _prompt: "1",
+                output=output,
+            )
+
+        self.assertIsNotNone(selected)
+        self.assertEqual(selected.session_id, "89abcdef-0123-4567-89ab-cdef01234567")
+
     def test_search_flow_hides_saved_sessions(self) -> None:
         output = io.StringIO()
         entries = {

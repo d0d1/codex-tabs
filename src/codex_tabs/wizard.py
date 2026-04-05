@@ -255,6 +255,25 @@ def filter_saved_threads(
     ]
 
 
+def load_recent_unsaved_threads(
+    *,
+    limit: int,
+    ignored_session_ids: set[str],
+    tracked_session_ids: set[str],
+) -> list[CodexThread]:
+    threads = load_codex_threads(limit=limit)
+    enrich_threads_with_last_messages(threads)
+    threads = filter_ignored_threads(
+        threads,
+        ignored_session_ids=ignored_session_ids,
+        include_ignored=False,
+    )
+    return filter_saved_threads(
+        threads,
+        tracked_session_ids=tracked_session_ids,
+    )
+
+
 def handle_wizard_add(
     entries: dict[str, SessionEntry],
     ignored_session_ids: set[str],
@@ -277,15 +296,9 @@ def handle_wizard_add(
         if choice in {"b", "back"}:
             return
         if choice == "1":
-            threads = load_codex_threads(limit=10)
-            enrich_threads_with_last_messages(threads)
-            threads = filter_ignored_threads(
-                threads,
+            threads = load_recent_unsaved_threads(
+                limit=10,
                 ignored_session_ids=ignored_session_ids,
-                include_ignored=False,
-            )
-            threads = filter_saved_threads(
-                threads,
                 tracked_session_ids=tracked_session_ids,
             )
             if not threads:
@@ -360,20 +373,14 @@ def browse_recent_threads(
     *,
     input_fn: Callable[[str], str],
     output: TextIO,
-    initial_limit: int = 3,
+    initial_limit: int = 10,
     step: int = 10,
 ) -> CodexThread | None:
     limit = initial_limit
     while True:
-        threads = load_codex_threads(limit=limit)
-        enrich_threads_with_last_messages(threads)
-        threads = filter_ignored_threads(
-            threads,
+        threads = load_recent_unsaved_threads(
+            limit=limit,
             ignored_session_ids=ignored_session_ids,
-            include_ignored=False,
-        )
-        threads = filter_saved_threads(
-            threads,
             tracked_session_ids=tracked_session_ids,
         )
         if not threads:
