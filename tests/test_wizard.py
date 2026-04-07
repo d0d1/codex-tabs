@@ -41,6 +41,19 @@ class WizardTests(unittest.TestCase):
         self.assertIn("Rename a saved tab alias", rendered)
         self.assertIn("Delete a saved tab alias", rendered)
         self.assertIn("Ignore other untracked previous sessions", rendered)
+        self.assertIn("[S] Settings", rendered)
+
+    def test_prompt_main_action_shows_settings_when_no_entries(self) -> None:
+        output = io.StringIO()
+        action = prompt_main_action(
+            {},
+            input_fn=lambda _prompt: "q",
+            output=output,
+        )
+
+        rendered = output.getvalue()
+        self.assertEqual(action, "quit")
+        self.assertIn("[S] Settings", rendered)
 
     def test_run_wizard_quit_when_no_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -202,6 +215,29 @@ class WizardTests(unittest.TestCase):
             rendered = output.getvalue()
             self.assertIn("This can take a moment", rendered)
             self.assertIn("Ignored 2 previous untracked sessions.", rendered)
+
+    def test_run_wizard_settings_can_set_launcher(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config = Path(tmp) / "sessions.toml"
+            output = io.StringIO()
+            responses = iter(["s", "l", "4", "b", "q"])
+
+            with patch("codex_tabs.wizard.get_config_path", return_value=config), patch(
+                "codex_tabs.wizard.detect_windows_admin_context",
+                return_value=False,
+            ):
+                code = run_wizard(
+                    input_fn=lambda _prompt: next(responses),
+                    output=output,
+                )
+
+            rendered = output.getvalue()
+            self.assertEqual(code, 0)
+            self.assertIn("Settings", rendered)
+            self.assertIn("Launcher Settings", rendered)
+            self.assertIn("Launcher set to direct.", rendered)
+            registry = load_registry_data(config)
+            self.assertEqual(registry.launcher, "direct")
 
     def test_parse_saved_tab_selection_accepts_indices_and_names(self) -> None:
         entries = {

@@ -25,8 +25,10 @@ from codex_tabs.launchers import open_named_sessions
 from codex_tabs.models import CodexThread, SessionEntry
 from codex_tabs.registry import (
     get_config_path,
+    load_ignored_session_ids,
     load_registry,
     load_registry_data,
+    validate_launcher,
     validate_name,
     write_registry,
 )
@@ -61,6 +63,7 @@ def run_wizard(
         entries = registry.sessions
         ignored_session_ids = registry.ignored_session_ids
         wt_profile = registry.wt_profile
+        launcher = registry.launcher
         action = prompt_main_action(entries, input_fn=input_fn, output=output)
         if action == "quit":
             print(success_text("Graceful shutdown complete", stream=output), file=output)
@@ -89,6 +92,7 @@ def run_wizard(
             handle_wizard_open(
                 entries,
                 wt_profile=wt_profile,
+                launcher=launcher,
                 input_fn=input_fn,
                 output=output,
             )
@@ -97,6 +101,7 @@ def run_wizard(
             handle_wizard_open_all(
                 entries,
                 wt_profile=wt_profile,
+                launcher=launcher,
                 input_fn=input_fn,
                 output=output,
             )
@@ -116,6 +121,13 @@ def run_wizard(
                 output=output,
             )
             continue
+        if action == "settings":
+            handle_wizard_settings(
+                config_path,
+                input_fn=input_fn,
+                output=output,
+            )
+            continue
 
 
 def prompt_main_action(
@@ -128,12 +140,15 @@ def prompt_main_action(
         print("", file=output)
         print(warning_text("No saved tabs yet.", stream=output), file=output)
         menu_line("A", "Add a tab", output=output)
+        menu_line("S", "Settings", output=output)
         menu_line("C", "Clear the screen", output=output)
         menu_line("Q", "Quit", output=output)
         while True:
             choice = prompt_input(input_fn, "> ", output=output).strip().lower()
             if choice in {"a", "add"}:
                 return "add"
+            if choice in {"s", "settings"}:
+                return "settings"
             if choice in {"c", "clear"}:
                 return "clear"
             if choice in {"q", "quit"}:
@@ -149,6 +164,7 @@ def prompt_main_action(
         menu_line("R", "Rename a saved tab alias", output=output)
         menu_line("D", "Delete a saved tab alias", output=output)
         menu_line("I", "Ignore other untracked previous sessions", output=output)
+        menu_line("S", "Settings", output=output)
         menu_line("Q", "Quit", output=output)
         while True:
             choice = prompt_input(input_fn, "> ", output=output).strip().lower()
@@ -168,6 +184,8 @@ def prompt_main_action(
                 return "remove"
             if choice in {"i", "ignore", "ignore-other"}:
                 return "ignore-other"
+            if choice in {"s", "settings"}:
+                return "settings"
             if choice in {"q", "quit"}:
                 return "quit"
 
@@ -443,6 +461,7 @@ def process_selected_thread(
     registry = load_registry_data(config_path)
     ignored_session_ids = registry.ignored_session_ids
     wt_profile = registry.wt_profile
+    launcher = registry.launcher
     write_registry(config_path, entries, ignored_session_ids)
     print(success_text(f"Saved tab: {validated_name}", stream=output), file=output)
 
@@ -456,6 +475,7 @@ def process_selected_thread(
             load_registry(config_path),
             [validated_name],
             wt_profile=wt_profile,
+            launcher=launcher,
             window="last",
             dry_run=False,
         )
@@ -518,10 +538,89 @@ def handle_wizard_ignore_other(
         print(success_text(f"Ignored {ignored_count} previous untracked sessions.", stream=output), file=output)
 
 
+def handle_wizard_settings(
+    config_path: Path,
+    *,
+    input_fn: Callable[[str], str],
+    output: TextIO,
+) -> None:
+    while True:
+        registry = load_registry_data(config_path)
+        print("", file=output)
+        print(header_text("Settings", stream=output), file=output)
+        print(
+            f"{label_text('Current launcher:', stream=output)} {registry.launcher or 'auto'}",
+            file=output,
+        )
+        menu_line("L", "Launcher", output=output)
+        menu_line("B", "Back", output=output)
+
+        choice = prompt_input(input_fn, "> ", output=output).strip().lower()
+        if choice in {"b", "back", ""}:
+            return
+        if choice in {"l", "launcher"}:
+            handle_wizard_launcher_settings(config_path, input_fn=input_fn, output=output)
+
+
+def handle_wizard_launcher_settings(
+    config_path: Path,
+    *,
+    input_fn: Callable[[str], str],
+    output: TextIO,
+) -> None:
+    options = {
+        "1": "auto",
+        "2": "wt",
+        "3": "tmux",
+        "4": "direct",
+    }
+
+    while True:
+        current = load_registry_data(config_path).launcher or "auto"
+        print("", file=output)
+        print(header_text("Launcher Settings", stream=output), file=output)
+        print(
+            label_text(
+                "Choose how codex-tabs reopens saved sessions on this machine.",
+                stream=output,
+            ),
+            file=output,
+        )
+        print(f"{label_text('Current value:', stream=output)} {current}", file=output)
+        menu_line("1", "Auto detect", output=output)
+        menu_line("2", "Windows Terminal", output=output)
+        menu_line("3", "tmux", output=output)
+        menu_line("4", "Direct in current terminal", output=output)
+        menu_line("B", "Back", output=output)
+
+        choice = prompt_input(input_fn, "> ", output=output).strip().lower()
+        if choice in {"b", "back", ""}:
+            return
+        launcher = options.get(choice)
+        if launcher is None:
+            continue
+        save_launcher_setting(config_path, launcher)
+        print(success_text(f"Launcher set to {launcher}.", stream=output), file=output)
+        return
+
+
+def save_launcher_setting(config_path: Path, launcher: str) -> None:
+    launcher = validate_launcher(launcher)
+    registry = load_registry_data(config_path)
+    write_registry(
+        config_path,
+        registry.sessions,
+        load_ignored_session_ids(config_path),
+        wt_profile=registry.wt_profile,
+        launcher=launcher,
+    )
+
+
 def handle_wizard_open(
     entries: dict[str, SessionEntry],
     *,
     wt_profile: str | None,
+    launcher: str | None,
     input_fn: Callable[[str], str],
     output: TextIO,
 ) -> None:
@@ -550,6 +649,7 @@ def handle_wizard_open(
             entries,
             names,
             wt_profile=wt_profile,
+            launcher=launcher,
             window="last",
             dry_run=False,
         )
@@ -566,6 +666,7 @@ def handle_wizard_open_all(
     entries: dict[str, SessionEntry],
     *,
     wt_profile: str | None,
+    launcher: str | None,
     input_fn: Callable[[str], str],
     output: TextIO,
 ) -> None:
@@ -576,7 +677,7 @@ def handle_wizard_open_all(
     names = sorted(entries)
     if len(names) >= 6:
         confirmed = prompt_yes_no(
-            f"Open {len(names)} saved tabs in separate Windows Terminal tabs? [y/N]: ",
+            f"Open {len(names)} saved tabs with the configured launcher? [y/N]: ",
             input_fn=input_fn,
             default=False,
         )
@@ -584,13 +685,18 @@ def handle_wizard_open_all(
             print(warning_text("Canceled.", stream=output), file=output)
             return
 
-    code = open_named_sessions(
-        entries,
-        names,
-        wt_profile=wt_profile,
-        window="last",
-        dry_run=False,
-    )
+    try:
+        code = open_named_sessions(
+            entries,
+            names,
+            wt_profile=wt_profile,
+            launcher=launcher,
+            window="last",
+            dry_run=False,
+        )
+    except ValueError as exc:
+        print(error_text(str(exc), stream=output), file=output)
+        return
     if code == 0:
         print("", file=output)
         print(success_text("Opened all saved tabs.", stream=output), file=output)

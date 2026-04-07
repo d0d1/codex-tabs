@@ -31,12 +31,14 @@ from codex_tabs.display import (
 )
 from codex_tabs.formatting import format_relative_age, format_timestamp
 from codex_tabs.launchers import (
+    build_direct_command,
     build_tmux_commands,
     build_wt_command,
     detect_launcher_backend,
     open_named_sessions,
+    resolve_launcher_backend,
 )
-from codex_tabs.models import CodexThread, RegistryData, SessionEntry
+from codex_tabs.models import CodexThread, LAUNCHER_CHOICES, RegistryData, SessionEntry
 from codex_tabs.registry import (
     create_example_entries,
     get_config_path,
@@ -45,6 +47,7 @@ from codex_tabs.registry import (
     load_registry_data,
     normalize_name,
     normalize_tags,
+    validate_launcher,
     validate_name,
     validate_session_id,
     write_registry,
@@ -71,6 +74,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     open_parser = subparsers.add_parser("open", help="Open one or more named sessions")
     open_parser.add_argument("names", nargs="+", help="Session names to open")
+    open_parser.add_argument(
+        "--launcher",
+        choices=LAUNCHER_CHOICES,
+        help="Launcher backend to use instead of the configured default",
+    )
     open_parser.add_argument(
         "--window",
         default="last",
@@ -223,6 +231,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Create an example config if one does not exist",
     )
+    config_subparsers = config_parser.add_subparsers(dest="config_command")
+
+    config_get_parser = config_subparsers.add_parser("get", help="Read a codex-tabs setting")
+    config_get_parser.add_argument("key", choices=["launcher"], help="Setting key")
+
+    config_set_parser = config_subparsers.add_parser("set", help="Persist a codex-tabs setting")
+    config_set_parser.add_argument("key", choices=["launcher"], help="Setting key")
+    config_set_parser.add_argument("value", help="Setting value")
 
     subparsers.add_parser(
         "setup-wt-admin",
@@ -247,6 +263,24 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "config":
             if args.ensure_example and not config_path.exists():
                 write_registry(config_path, create_example_entries())
+            if args.config_command == "get":
+                registry = load_registry_data(config_path)
+                if args.key == "launcher":
+                    print(registry.launcher or "auto")
+                    return 0
+            if args.config_command == "set":
+                registry = load_registry_data(config_path)
+                if args.key == "launcher":
+                    launcher = validate_launcher(args.value.strip().lower())
+                    write_registry(
+                        config_path,
+                        registry.sessions,
+                        registry.ignored_session_ids,
+                        wt_profile=registry.wt_profile,
+                        launcher=launcher,
+                    )
+                    print(f"launcher={launcher}")
+                    return 0
             print(config_path)
             return 0
 
@@ -287,6 +321,7 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_import(entries, ignored_session_ids, config_path, args)
         if args.command == "open":
             args.wt_profile = registry.wt_profile
+            args.launcher = args.launcher or registry.launcher
             return cmd_open(entries, args)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
@@ -301,6 +336,7 @@ __all__ = [
     "RegistryData",
     "SessionEntry",
     "browse_recent_threads",
+    "build_direct_command",
     "build_parser",
     "build_tmux_commands",
     "build_wt_command",
@@ -328,9 +364,11 @@ __all__ = [
     "print_thread_details",
     "prompt_main_action",
     "resolve_single_saved_tab_selection",
+    "resolve_launcher_backend",
     "run_wizard",
     "search_codex_threads",
     "validate_name",
+    "validate_launcher",
     "validate_session_id",
     "write_registry",
 ]

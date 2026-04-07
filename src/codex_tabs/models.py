@@ -7,6 +7,7 @@ from pathlib import Path
 
 DEFAULT_CONFIG_PATH = Path("~/.config/codex-tabs/sessions.toml").expanduser()
 DEFAULT_CODEX_HOME = Path("~/.codex").expanduser()
+LAUNCHER_CHOICES = ("auto", "wt", "tmux", "direct")
 SESSION_ID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 )
@@ -39,3 +40,4 @@ class RegistryData:
     sessions: dict[str, SessionEntry]
     ignored_session_ids: set[str]
     wt_profile: str | None = None
+    launcher: str | None = None

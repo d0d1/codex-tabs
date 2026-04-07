@@ -17,6 +17,7 @@ def open_named_sessions(
     names: list[str],
     *,
     wt_profile: str | None = None,
+    launcher: str | None = None,
     window: str,
     dry_run: bool,
 ) -> int:
@@ -27,7 +28,7 @@ def open_named_sessions(
         print(error_text("codex is not available in PATH", stream=sys.stderr), file=sys.stderr)
         return 1
 
-    backend = detect_launcher_backend()
+    backend = resolve_launcher_backend(launcher)
     if backend == "wt":
         wt_parts = build_wt_command(
             selected,
@@ -61,9 +62,23 @@ def open_named_sessions(
                 return completed.returncode
         return 0
 
+    if backend == "direct":
+        if len(selected) != 1:
+            raise ValueError("the direct launcher supports opening only one session at a time")
+        direct_command = build_direct_command(
+            selected[0],
+            codex_bin=codex_bin,
+            fallback_cwd=os.getcwd(),
+        )
+        if dry_run:
+            print(shlex.join(direct_command))
+            return 0
+        completed = subprocess.run(direct_command, check=False)
+        return completed.returncode
+
     print(
         error_text(
-            "No supported launcher found. Install Windows Terminal in WSL or tmux on Linux/macOS.",
+            describe_missing_launcher(launcher),
             stream=sys.stderr,
         ),
         file=sys.stderr,
@@ -79,6 +94,30 @@ def detect_launcher_backend() -> str | None:
     if shutil.which("wt.exe") is not None:
         return "wt"
     return None
+
+
+def resolve_launcher_backend(preferred: str | None) -> str | None:
+    requested = (preferred or os.environ.get("CODEX_TABS_LAUNCHER") or "auto").strip().lower()
+    if requested == "auto":
+        return detect_launcher_backend()
+    if requested == "direct":
+        return "direct"
+    if requested == "wt":
+        return "wt" if shutil.which("wt.exe") is not None else None
+    if requested == "tmux":
+        return "tmux" if shutil.which("tmux") is not None else None
+    return None
+
+
+def describe_missing_launcher(preferred: str | None) -> str:
+    requested = (preferred or os.environ.get("CODEX_TABS_LAUNCHER") or "auto").strip().lower()
+    if requested == "wt":
+        return "The wt launcher was requested, but wt.exe is not available in PATH."
+    if requested == "tmux":
+        return "The tmux launcher was requested, but tmux is not installed."
+    if requested == "auto":
+        return "No supported launcher found. Install Windows Terminal in WSL, tmux on Linux/macOS, or use launcher=direct."
+    return f"The {requested} launcher is not available in this environment."
 
 
 def get_current_tmux_session() -> str | None:
@@ -166,6 +205,24 @@ def build_tmux_commands(
     return commands
 
 
+def build_direct_command(
+    entry: SessionEntry,
+    *,
+    codex_bin: str,
+    fallback_cwd: str,
+) -> list[str]:
+    shell_bin, shell_flag = get_interactive_shell()
+    return [
+        shell_bin,
+        shell_flag,
+        build_codex_resume_shell_command(
+            entry,
+            codex_bin=codex_bin,
+            fallback_cwd=fallback_cwd,
+        ),
+    ]
+
+
 def default_tmux_session_name() -> str:
     return f"codex-tabs-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
@@ -232,6 +289,18 @@ def build_codex_resume_shell_command(
         f"{shell_quote(codex_bin)} --dangerously-bypass-approvals-and-sandbox "
         f"resume {shell_quote(entry.session_id)}"
     )
+
+
+def get_interactive_shell() -> tuple[str, str]:
+    bash = shutil.which("bash")
+    if bash is not None:
+        return bash, "-lc"
+
+    shell = os.environ.get("SHELL")
+    if shell:
+        return shell, "-lc"
+
+    return "/bin/sh", "-c"
 
 
 def shell_quote(value: str) -> str:

@@ -1,3 +1,5 @@
+launcher = "auto"
+
 ignored_session_ids = [
   "fedcba98-7654-3210-fedc-ba9876543210",
 ]

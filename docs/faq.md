@@ -25,6 +25,24 @@ Examples:
 - Windows/WSL: Windows Terminal tabs
 - Linux/macOS: `tmux` windows
 
+If you want to reopen one session in the current terminal instead, use:
+
+```bash
+codex-tabs open your-tab-name --launcher direct
+```
+
+To make that the default, either use the interactive `Settings` menu in `codex-tabs` or run:
+
+```bash
+codex-tabs config set launcher direct
+```
+
+The registry will then contain:
+
+```toml
+launcher = "direct"
+```
+
 ## How do I open Codex sessions elevated on Windows/WSL?
 
 Run:

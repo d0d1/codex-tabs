@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from codex_tabs.cli import (
+    main,
     RegistryData,
     SessionEntry,
     create_example_entries,
@@ -75,6 +76,21 @@ class RegistryTests(unittest.TestCase):
 
             self.assertEqual(registry.wt_profile, "Codex Tabs (Admin)")
 
+    def test_write_and_load_registry_preserves_launcher(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "sessions.toml"
+            entries = {
+                "personal": SessionEntry(
+                    name="personal",
+                    session_id="01234567-89ab-cdef-0123-456789abcdef",
+                )
+            }
+
+            write_registry(path, entries, launcher="direct")
+            registry = load_registry_data(path)
+
+            self.assertEqual(registry.launcher, "direct")
+
     def test_create_example_entries_is_generic(self) -> None:
         entries = create_example_entries()
         self.assertEqual(set(entries), {"personal", "work"})
@@ -104,3 +120,38 @@ class RegistryMutationTests(unittest.TestCase):
             self.assertNotIn("old-name", reloaded)
             self.assertEqual(reloaded["new-name"].name, "new-name")
             self.assertEqual(reloaded["new-name"].tags, ["a"])
+
+    def test_config_set_and_get_launcher(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "sessions.toml"
+            entries = {
+                "personal": SessionEntry(
+                    name="personal",
+                    session_id="01234567-89ab-cdef-0123-456789abcdef",
+                )
+            }
+            write_registry(path, entries)
+
+            import os
+            import io
+            from contextlib import redirect_stdout
+
+            old = os.environ.get("CODEX_TABS_CONFIG")
+            os.environ["CODEX_TABS_CONFIG"] = str(path)
+            try:
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    set_code = main(["config", "set", "launcher", "direct"])
+                self.assertEqual(set_code, 0)
+                self.assertIn("launcher=direct", stdout.getvalue())
+
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    get_code = main(["config", "get", "launcher"])
+                self.assertEqual(get_code, 0)
+                self.assertEqual(stdout.getvalue().strip(), "direct")
+            finally:
+                if old is None:
+                    del os.environ["CODEX_TABS_CONFIG"]
+                else:
+                    os.environ["CODEX_TABS_CONFIG"] = old

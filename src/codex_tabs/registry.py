@@ -8,6 +8,7 @@ import tomllib
 
 from codex_tabs.models import (
     DEFAULT_CONFIG_PATH,
+    LAUNCHER_CHOICES,
     NAME_RE,
     SESSION_ID_RE,
     RegistryData,
@@ -24,7 +25,7 @@ def get_config_path() -> Path:
 
 def load_registry_data(path: Path) -> RegistryData:
     if not path.exists():
-        return RegistryData(sessions={}, ignored_session_ids=set(), wt_profile=None)
+        return RegistryData(sessions={}, ignored_session_ids=set(), wt_profile=None, launcher=None)
 
     with path.open("rb") as f:
         data = tomllib.load(f)
@@ -60,10 +61,16 @@ def load_registry_data(path: Path) -> RegistryData:
         wt_profile = None
     else:
         wt_profile = wt_profile.strip()
+    launcher = data.get("launcher")
+    if not isinstance(launcher, str) or not launcher.strip():
+        launcher = None
+    else:
+        launcher = validate_launcher(launcher.strip().lower())
     return RegistryData(
         sessions=entries,
         ignored_session_ids=ignored_session_ids,
         wt_profile=wt_profile,
+        launcher=launcher,
     )
 
 
@@ -80,13 +87,16 @@ def write_registry(
     entries: dict[str, SessionEntry],
     ignored_session_ids: set[str] | None = None,
     wt_profile: str | None = None,
+    launcher: str | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    existing = load_registry_data(path) if path.exists() else RegistryData({}, set(), None)
+    existing = load_registry_data(path) if path.exists() else RegistryData({}, set(), None, None)
     if ignored_session_ids is None:
         ignored_session_ids = existing.ignored_session_ids
     if wt_profile is None:
         wt_profile = existing.wt_profile
+    if launcher is None:
+        launcher = existing.launcher
 
     lines: list[str] = [
         "# codex-tabs session registry",
@@ -95,6 +105,9 @@ def write_registry(
     ]
     if wt_profile:
         lines.append(f'wt_profile = "{escape_toml(wt_profile)}"')
+        lines.append("")
+    if launcher:
+        lines.append(f'launcher = "{escape_toml(validate_launcher(launcher))}"')
         lines.append("")
     if ignored_session_ids:
         rendered_ids = ", ".join(
@@ -148,6 +161,13 @@ def validate_session_id(session_id: str) -> str:
             "session IDs must look like 01234567-89ab-cdef-0123-456789abcdef"
         )
     return session_id
+
+
+def validate_launcher(launcher: str) -> str:
+    if launcher not in LAUNCHER_CHOICES:
+        choices = ", ".join(LAUNCHER_CHOICES)
+        raise ValueError(f"launcher must be one of: {choices}")
+    return launcher
 
 
 def create_example_entries() -> dict[str, SessionEntry]:

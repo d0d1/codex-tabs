@@ -121,10 +121,12 @@ def cmd_rename(
 
 def cmd_open(entries: dict[str, SessionEntry], args: argparse.Namespace) -> int:
     wt_profile = getattr(args, "wt_profile", None)
+    launcher = getattr(args, "launcher", None)
     return open_named_sessions(
         entries,
         args.names,
         wt_profile=wt_profile,
+        launcher=launcher,
         window=args.window,
         dry_run=args.dry_run,
     )

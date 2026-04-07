@@ -3,7 +3,14 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from codex_tabs.cli import SessionEntry, build_tmux_commands, build_wt_command, detect_launcher_backend
+from codex_tabs.cli import (
+    SessionEntry,
+    build_direct_command,
+    build_tmux_commands,
+    build_wt_command,
+    detect_launcher_backend,
+    resolve_launcher_backend,
+)
 
 
 class LauncherTests(unittest.TestCase):
@@ -132,6 +139,22 @@ class LauncherTests(unittest.TestCase):
             "cd '/tmp' && '/usr/bin/codex' --dangerously-bypass-approvals-and-sandbox resume '01234567-89ab-cdef-0123-456789abcdef'",
         ]])
 
+    def test_build_direct_command_uses_current_shell(self) -> None:
+        entry = SessionEntry(
+            name="personal",
+            session_id="01234567-89ab-cdef-0123-456789abcdef",
+        )
+
+        with patch("codex_tabs.launchers.shutil.which", side_effect=lambda name: "/usr/bin/bash" if name == "bash" else None):
+            command = build_direct_command(
+                entry,
+                codex_bin="/usr/bin/codex",
+                fallback_cwd="/tmp",
+            )
+
+        self.assertEqual(command[:2], ["/usr/bin/bash", "-lc"])
+        self.assertIn("resume '01234567-89ab-cdef-0123-456789abcdef'", command[2])
+
     def test_detect_launcher_backend_prefers_wt_in_wsl(self) -> None:
         with patch.dict("os.environ", {"WSL_DISTRO_NAME": "Ubuntu"}, clear=False), patch(
             "codex_tabs.launchers.shutil.which",
@@ -145,3 +168,11 @@ class LauncherTests(unittest.TestCase):
             side_effect=lambda name: "/usr/bin/tmux" if name == "tmux" else None,
         ):
             self.assertEqual(detect_launcher_backend(), "tmux")
+
+    def test_resolve_launcher_backend_honors_direct(self) -> None:
+        with patch("codex_tabs.launchers.shutil.which", return_value=None):
+            self.assertEqual(resolve_launcher_backend("direct"), "direct")
+
+    def test_resolve_launcher_backend_requires_requested_tmux(self) -> None:
+        with patch("codex_tabs.launchers.shutil.which", return_value=None):
+            self.assertIsNone(resolve_launcher_backend("tmux"))

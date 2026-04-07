@@ -9,6 +9,10 @@ It keeps a registry of aliases for `codex resume <SESSION_ID>` and opens them wi
 
 Platform support outside Windows/WSL is implemented but not fully tested yet.
 
+Launcher behavior is configurable. By default `codex-tabs` auto-detects the best backend for the current machine, and advanced setups can pin a launcher such as `direct` for the current terminal.
+
+You can change persistent preferences from the interactive `Settings` menu or with `codex-tabs config set ...`.
+
 Feature suggestions, bug reports, and platform-specific improvements are welcome in GitHub Issues or Discussions.
 
 ## Install
